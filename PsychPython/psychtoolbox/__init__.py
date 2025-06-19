@@ -31,3 +31,8 @@ if is_64bits:
     from .PsychPortAudio import PsychPortAudio
 else:
     PsychPortAudio = None
+from .Screen import Screen
+
+from . import audio
+from . import hid
+from . import screen

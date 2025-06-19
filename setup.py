@@ -136,7 +136,7 @@ if platform.system() == 'Linux':
     psychhid_extralinkargs = []
 
     # Extra files needed, e.g., libraries:
-    extra_files = {}
+    extra_files = {'psychtoolbox': ['screen.py', 'audio.py', 'hid.py']}
 
 if platform.system() == 'Windows':
     print('Building for Windows...\n')
@@ -305,6 +305,59 @@ IOPort = Extension(name,
                    py_limited_api = py_limited_api,
                   )
 ext_modules.append(IOPort)
+
+# Screen module: Graphics, multimedia, windows. This is the core module of PTB
+if platform.system() == 'Linux':
+    # Screen module needs additional libraries on Linux for X11/GLX/OpenGL support
+    screen_libs = base_libs + ['GL', 'GLU', 'X11', 'Xext', 'X11-xcb', 'xcb', 'xcb-dri3', 'xcb-present', 'xcb-sync', 'Xcomposite', 'Xfixes', 'Xrandr', 'Xxf86vm', 'pciaccess', 'Xi']
+    screen_compile_args = base_compile_args + ['-DPTBMODULE_Screen', '-DGLEW_STATIC']
+    screen_includes = ['/usr/X11R6/include']
+    screen_objects = ['PsychSourceGL/Source/Common/Screen/tinyexr.o']
+    
+    name = 'Screen'
+    Screen = Extension(name,
+                      extra_compile_args = screen_compile_args,
+                      define_macros = get_basemacros(name, osname),
+                      include_dirs = get_baseincludedirs(name, osname) + screen_includes,
+                      sources = get_basesources(name, osname),
+                      libraries = screen_libs,
+                      extra_objects = screen_objects,
+                      py_limited_api = py_limited_api,
+                     )
+    ext_modules.append(Screen)
+elif platform.system() == 'Windows':
+    # Screen module on Windows - needs OpenGL
+    screen_libs = base_libs + ['opengl32', 'glu32', 'gdi32']
+    screen_compile_args = base_compile_args + ['-DPTBMODULE_Screen', '-DGLEW_STATIC']
+    
+    name = 'Screen'
+    Screen = Extension(name,
+                      extra_compile_args = screen_compile_args,
+                      define_macros = get_basemacros(name, osname),
+                      include_dirs = get_baseincludedirs(name, osname),
+                      sources = get_basesources(name, osname),
+                      libraries = screen_libs,
+                      py_limited_api = py_limited_api,
+                     )
+    ext_modules.append(Screen)
+elif platform.system() == 'Darwin':
+    # Screen module on macOS - needs frameworks
+    screen_libs = base_libs
+    screen_compile_args = base_compile_args + ['-DPTBMODULE_Screen', '-DGLEW_STATIC']
+    screen_link_args = ['-framework', 'OpenGL', '-framework', 'CoreVideo', '-framework', 'CoreServices', 
+                       '-framework', 'CoreFoundation', '-framework', 'ApplicationServices']
+    
+    name = 'Screen'
+    Screen = Extension(name,
+                      extra_compile_args = screen_compile_args,
+                      define_macros = get_basemacros(name, osname),
+                      include_dirs = get_baseincludedirs(name, osname),
+                      sources = get_basesources(name, osname),
+                      libraries = screen_libs,
+                      extra_link_args = screen_link_args,
+                      py_limited_api = py_limited_api,
+                     )
+    ext_modules.append(Screen)
 description = 'Pieces of Psychtoolbox-3 ported to CPython.'
 
 setup (name = 'psychtoolbox',

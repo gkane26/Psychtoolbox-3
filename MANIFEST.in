@@ -3,6 +3,9 @@ include PsychSourceGL/License.txt
 recursive-include PsychSourceGL *.c
 recursive-include PsychSourceGL *.h
 
+# Include Python wrapper files
+recursive-include PsychPython *.py
+
 # Windows dependencies
 include PsychSourceGL/Cohorts/libusb1-win32/MS32/dll/libusb-1.0.*
 include PsychSourceGL/Cohorts/libusb1-win32/MS64/dll/libusb-1.0.*
