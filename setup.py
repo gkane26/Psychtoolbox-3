@@ -36,12 +36,14 @@
 # It is recommended to compile these on the oldest supported Python version (i.e. 3.7).
 
 # from distutils.core import setup, Extension # Build system.
-from setuptools import setup, Extension, find_packages
-import os, fnmatch, shutil                  # Directory traversal, file list building.
-import platform                             # OS detection.
-import sys                                  # cpu arch detection.
-import numpy                                # To get include dir on macOS.
+import fnmatch
+import os  # Directory traversal, file list building.
+import platform  # OS detection.
+import shutil
+import sys  # cpu arch detection.
 
+import numpy  # To get include dir on macOS.
+from setuptools import Extension, setup
 from wheel.bdist_wheel import bdist_wheel
 
 # We borrowed the custom wheel configuration from https://github.com/joerick/python-abi3-package-sample
