@@ -378,7 +378,7 @@ setup (name = 'psychtoolbox',
        ext_package = 'psychtoolbox',
        ext_modules = ext_modules,
        include_package_data=True,  # Include files listed in MANIFEST.in
-       install_requires = ['numpy>=1.13.3'], # Oldest supported numpy on Python 3.6
+       install_requires = ['numpy>=1.13.3', "pyyaml"], # Oldest supported numpy on Python 3.6
        cmdclass={"bdist_wheel": bdist},
       )
 
