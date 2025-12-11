@@ -163,7 +163,7 @@ class PTBScreen:
         fb_override_rect = _coerce_to_float(fb_override_rect, check_length=4)
         vrr_params = _coerce_to_float(vrr_params)
 
-        return Screen(
+        ptr, rect = Screen(
             "OpenWindow",
             screen_number,
             color,
@@ -178,6 +178,10 @@ class PTBScreen:
             fb_override_rect,
             vrr_params,
         )
+        
+        rect = [int(v) for v in rect[0]]
+        
+        return ptr, rect
 
     # def open_offscreen_window(
     #     self,
