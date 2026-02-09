@@ -36,11 +36,11 @@ from . import Screen
 
 
 def _is_instantiated(val):
-    if not val:
-        if val is None:
-            return False
-        elif hasattr(val, "__len__"):
-            return len(val) > 0
+    if val is None:
+        return False
+    elif hasattr(val, "__len__"):
+        return len(val) > 0
+
     return True
 
 
@@ -51,7 +51,7 @@ def _coerce_to_float(val, check_length=None):
                 raise ValueError(f"Argument must be a list of length {check_length}")
 
         if hasattr(val, "__len__"):
-            val = [float(x) for x in val]
+            val = [_coerce_to_float(v) for v in val]
         else:
             val = float(val)
     else:
