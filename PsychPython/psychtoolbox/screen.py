@@ -49,7 +49,58 @@ class PTBScreen:
         else:
             self.display_mapping = {}
 
-    # No complex helper function needed - just use default arguments!
+    @staticmethod
+    def _check_types(value, dtype=None, length=None, allow_empty=True):
+        """Convert and validate value to proper type for Screen functions
+
+        Args:
+            value: Value to convert (scalar, list, array, or None)
+            dtype: Target numpy dtype (e.g., np.uint8, np.float64). If None, uses value's natural type
+            length: Expected length for sequences. If provided, validates length matches
+            allow_empty: If False, raises error for None or empty values
+
+        Returns:
+            Converted value with proper type, or original if None/empty and allow_empty=True
+
+        Raises:
+            ValueError: If length doesn't match expected or empty when not allowed
+        """
+        # Handle None
+        if value is None:
+            if not allow_empty:
+                raise ValueError("Value is required but None was provided")
+            return []
+        
+        # Check for empty list explicitly (before numpy array check)
+        if isinstance(value, list) and len(value) == 0:
+            return value
+        
+        # Check if it's a scalar (not a string, not an iterable, or a 0-d array)
+        is_scalar = not hasattr(value, "__len__") or isinstance(value, (int, float, np.number))
+        if isinstance(value, np.ndarray) and value.ndim == 0:
+            is_scalar = True
+            
+        # Handle scalars
+        if is_scalar:
+            if dtype is not None:
+                return dtype(value)
+            return value
+        
+        # Handle sequences (lists, arrays, etc.)
+        if len(value) == 0:
+            if not allow_empty:
+                raise ValueError("Value is required but empty sequence was provided")
+            return value
+        
+        # Validate length if specified
+        if length is not None and len(value) != length:
+            raise ValueError(f"Expected length {length}, got {len(value)}")
+        
+        # Convert to numpy array with specified dtype
+        if dtype is not None:
+            return np.asarray(value, dtype=dtype)
+
+        return np.asarray(value)
 
     def get_version(self):
         """Get Screen module version information"""
@@ -125,6 +176,18 @@ class PTBScreen:
                     float(self.display_mapping[screen_number_int]["head"]),
                     float(self.display_mapping[screen_number_int]["crtc"]),
                 )
+
+        color = self._check_types(color, dtype=np.uint8)
+        rect = self._check_types(rect, dtype=np.float64)
+        pixel_size = self._check_types(pixel_size, dtype=np.float64)
+        num_buffers = self._check_types(num_buffers, dtype=np.float64)
+        stereo_mode = self._check_types(stereo_mode, dtype=np.float64)
+        multisample = self._check_types(multisample, dtype=np.float64)
+        imaging_mode = self._check_types(imaging_mode, dtype=np.float64)
+        special_flags = self._check_types(special_flags, dtype=np.float64)
+        client_rect = self._check_types(client_rect, dtype=np.float64)
+        fb_override_rect = self._check_types(fb_override_rect, dtype=np.float64)
+        vrr_params = self._check_types(vrr_params, dtype=np.float64)
 
         ptr, rect = Screen(
             "OpenWindow",
@@ -223,6 +286,11 @@ class PTBScreen:
             texture_index: Texture reference for use in draw_texture
         """
         image_matrix = np.asarray(image_matrix)
+        optimize_angle = self._check_types(optimize_angle, dtype=np.float64)
+        special_flags = self._check_types(special_flags, dtype=np.float64)
+        float_precision = self._check_types(float_precision, dtype=np.float64)
+        texture_orientation = self._check_types(texture_orientation, dtype=np.float64)
+        texture_shader = self._check_types(texture_shader, dtype=np.float64)
 
         return Screen(
             "MakeTexture",
@@ -264,6 +332,13 @@ class PTBScreen:
             special_flags: Special flags for drawing
             aux_parameters: Auxiliary parameters
         """
+        source_rect = self._check_types(source_rect, dtype=np.float64)
+        dest_rect = self._check_types(dest_rect, dtype=np.float64)
+        rotation_angle = self._check_types(rotation_angle, dtype=np.float64)
+        global_alpha = self._check_types(global_alpha, dtype=np.float64)
+        modulate_color = self._check_types(modulate_color, dtype=np.uint8)
+        filter_mode = self._check_types(filter_mode, dtype=np.float64)
+
         return Screen(
             "DrawTexture",
             window_ptr,
@@ -308,6 +383,16 @@ class PTBScreen:
             special_flags: Special flags for drawing
             aux_parameters: Auxiliary parameters
         """
+        source_rects = self._check_types(source_rects, dtype=np.float64)
+        dest_rects = self._check_types(dest_rects, dtype=np.float64)
+        rotation_angles = self._check_types(rotation_angles, dtype=np.float64)
+        filter_modes = self._check_types(filter_modes, dtype=np.float64)
+        global_alphas = self._check_types(global_alphas, dtype=np.float64)
+        modulate_colors = self._check_types(modulate_colors, dtype=np.uint8)
+        texture_shader = self._check_types(texture_shader, dtype=np.float64)
+        special_flags = self._check_types(special_flags, dtype=np.float64)
+        aux_parameters = self._check_types(aux_parameters, dtype=np.float64)
+        
         return Screen(
             "DrawTextures",
             window_ptr,
@@ -336,6 +421,11 @@ class PTBScreen:
         Returns:
             Tuple of (VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, Beampos)
         """
+        when = self._check_types(when, dtype=np.float64)
+        dont_clear = self._check_types(dont_clear, dtype=np.float64)
+        dont_sync = self._check_types(dont_sync, dtype=np.float64)
+        multiflip = self._check_types(multiflip, dtype=np.float64)
+
         return Screen("Flip", window_ptr, when, dont_clear, dont_sync, multiflip)
 
     def flip_async_begin(
@@ -353,6 +443,11 @@ class PTBScreen:
         Returns:
             Tuple of (VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, Beampos)
         """
+        when = self._check_types(when, dtype=np.float64)
+        dont_clear = self._check_types(dont_clear, dtype=np.float64)
+        dont_sync = self._check_types(dont_sync, dtype=np.float64)
+        multiflip = self._check_types(multiflip, dtype=np.float64)
+
         return Screen(
             "AsyncFlipBegin", window_ptr, when, dont_clear, dont_sync, multiflip
         )
@@ -401,19 +496,33 @@ class PTBScreen:
         Returns:
             Time elapsed
         """
+        dont_clear = self._check_types(dont_clear, dtype=np.float64)
+        sync = self._check_types(sync, dtype=np.float64)
+
         return Screen("DrawingFinished", window_ptr, dont_clear, sync)
 
     # Drawing primitives - all take window_ptr as first argument like MATLAB
     def fill_rect(self, window_ptr, color=[], rect=[]):
         """Fill a rectangle with color (like MATLAB Screen('FillRect', ...))"""
+        color = self._check_types(color, dtype=np.uint8)
+        rect = self._check_types(rect, dtype=np.float64)
+
         Screen("FillRect", window_ptr, color, rect)
 
     def frame_rect(self, window_ptr, color=[], rect=[], pen_width=[]):
         """Draw rectangle outline (like MATLAB Screen('FrameRect', ...))"""
+        color = self._check_types(color, dtype=np.uint8)
+        rect = self._check_types(rect, dtype=np.float64)
+        pen_width = self._check_types(pen_width, dtype=np.float64)
+
         Screen("FrameRect", window_ptr, color, rect, pen_width)
 
     def fill_oval(self, window_ptr, color=[], rect=[], perfect_up_to_max_diameter=[]):
         """Fill an oval with color (like MATLAB Screen('FillOval', ...))"""
+        color = self._check_types(color, dtype=np.uint8)
+        rect = self._check_types(rect, dtype=np.float64)
+        perfect_up_to_max_diameter = self._check_types(perfect_up_to_max_diameter, dtype=np.float64)
+
         Screen("FillOval", window_ptr, color, rect, perfect_up_to_max_diameter)
 
     def frame_oval(
@@ -426,6 +535,12 @@ class PTBScreen:
         pen_mode=[],
     ):
         """Draw oval outline (like MATLAB Screen('FrameOval', ...))"""
+        color = self._check_types(color, dtype=np.uint8)
+        rect = self._check_types(rect, dtype=np.float64)
+        pen_width = self._check_types(pen_width, dtype=np.float64)
+        pen_height = self._check_types(pen_height, dtype=np.float64)
+        pen_mode = self._check_types(pen_mode, dtype=np.float64)
+
         Screen("FrameOval", window_ptr, color, rect, pen_width, pen_height, pen_mode)
 
     def draw_line(
@@ -439,6 +554,13 @@ class PTBScreen:
         pen_width=[],
     ):
         """Draw a line (like MATLAB Screen('DrawLine', ...))"""
+        color = self._check_types(color, dtype=np.uint8)
+        from_h = self._check_types(from_h, dtype=np.float64)
+        from_v = self._check_types(from_v, dtype=np.float64)
+        to_h = self._check_types(to_h, dtype=np.float64)
+        to_v = self._check_types(to_v, dtype=np.float64)
+        pen_width = self._check_types(pen_width, dtype=np.float64)
+
         Screen("DrawLine", window_ptr, color, from_h, from_v, to_h, to_v, pen_width)
 
     def draw_dots(
@@ -466,6 +588,12 @@ class PTBScreen:
             Tuple of dot size limits
         """
         xy = xy.T if xy.shape[0] != 2 else xy
+        xy = np.asarray(xy, dtype=np.float64)
+        size = self._check_types(size, dtype=np.float64)
+        color = self._check_types(color, dtype=np.uint8)
+        center = self._check_types(center, dtype=np.float64)
+        dot_type = self._check_types(dot_type, dtype=np.float64)
+        lenient = self._check_types(lenient, dtype=np.float64)
 
         return Screen(
             "DrawDots", window_ptr, xy, size, color, center, dot_type, lenient
@@ -501,6 +629,11 @@ class PTBScreen:
             )
 
         xy = [[float(v) for v in row] for row in xy]
+        width = self._check_types(width, dtype=np.float64)
+        colors = self._check_types(colors, dtype=np.uint8)
+        center = self._check_types(center, dtype=np.float64)
+        smooth = self._check_types(smooth, dtype=np.float64)
+        lenient = self._check_types(lenient, dtype=np.float64)
 
         return Screen(
             "DrawLines", window_ptr, xy, width, colors, center, smooth, lenient
@@ -625,6 +758,11 @@ class PTBScreen:
         Returns:
             Image as numpy array
         """
+        rect = self._check_types(rect, dtype=np.float64)
+        buffer_name = self._check_types(buffer_name, dtype=np.float64)
+        float_precision = self._check_types(float_precision, dtype=np.float64)
+        num_channels = self._check_types(num_channels, dtype=np.float64)
+
         return Screen(
             "GetImage", window_ptr, rect, buffer_name, float_precision, num_channels
         )
@@ -637,7 +775,9 @@ class PTBScreen:
             image_array: Image data as numpy array
             rect: Destination rectangle
         """
-        image_array = np.array(image_array, dtype=np.float32).tolist()
+        image_array = np.asarray(image_array, dtype=np.uint8)
+        rect = self._check_types(rect, dtype=np.float64)
+
         Screen("PutImage", window_ptr, image_array, rect)
 
     # Window information functions
@@ -651,6 +791,7 @@ class PTBScreen:
 
     def window_size(self, window_ptr, real_fb_size=0):
         """Get window size (like MATLAB Screen('WindowSize', ...))"""
+        real_fb_size = self._check_types(real_fb_size, dtype=np.float64)
         return Screen("WindowSize", window_ptr, real_fb_size)
 
     def pixel_size(self, window_ptr):
@@ -659,6 +800,10 @@ class PTBScreen:
 
     def get_flip_interval(self, window_ptr, num_samples=[], std_dev=[], timeout=[]):
         """Get monitor flip interval (like MATLAB Screen('GetFlipInterval', ...))"""
+        num_samples = self._check_types(num_samples, dtype=np.float64)
+        std_dev = self._check_types(std_dev, dtype=np.float64)
+        timeout = self._check_types(timeout, dtype=np.float64)
+
         return Screen("GetFlipInterval", window_ptr, num_samples, std_dev, timeout)
 
     # Gamma and color functions
@@ -666,6 +811,8 @@ class PTBScreen:
         self, window_ptr_or_screen_number, physical_display=[]
     ):
         """Read normalized gamma table (like MATLAB Screen('ReadNormalizedGammaTable', ...))"""
+        physical_display = self._check_types(physical_display, dtype=np.float64)
+
         return Screen(
             "ReadNormalizedGammaTable", window_ptr_or_screen_number, physical_display
         )
@@ -679,6 +826,11 @@ class PTBScreen:
         ignore_errors=[],
     ):
         """Load normalized gamma table (like MATLAB Screen('LoadNormalizedGammaTable', ...))"""
+        table = np.asarray(table, dtype=np.float64)
+        load_on_next_flip = self._check_types(load_on_next_flip, dtype=np.float64)
+        physical_display = self._check_types(physical_display, dtype=np.float64)
+        ignore_errors = self._check_types(ignore_errors, dtype=np.float64)
+
         return Screen(
             "LoadNormalizedGammaTable",
             window_ptr_or_screen_number,
@@ -691,6 +843,7 @@ class PTBScreen:
     # Other utility functions
     def rect(self, window_ptr_or_screen_number, real_fb_size=0):
         """Get rectangle (like MATLAB Screen('Rect', ...))"""
+        real_fb_size = self._check_types(real_fb_size, dtype=np.float64)
         return Screen("Rect", window_ptr_or_screen_number, real_fb_size)
 
 
