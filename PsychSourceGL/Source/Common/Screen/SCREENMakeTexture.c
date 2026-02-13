@@ -617,6 +617,20 @@ PsychError SCREENMakeTexture(void)
 
         // Improved version: Takes 25 ms on a 800x800 texture...
         if (isImageMatrixBytes && numMatrixPlanes==3){
+            #if PSYCH_LANGUAGE == PSYCH_PYTHON
+            // Python fast path: NumPy arrays are C-contiguous by default, so data is 
+            // already interleaved (RGBRGB...). Use memcpy instead of manual interleaving.
+            if (assume_texorientation == 3) {
+                // Zero-copy path: texture_orientation=3 means data is already in correct format
+                texturePointer = (GLuint*) byteMatrix;
+                textureRecord->textureMemory = texturePointer;
+                textureRecord->textureMemorySizeBytes = 0;
+            } else {
+                // Fast memcpy for interleaved data
+                memcpy((void*) texturePointer, (void*) byteMatrix, iters * 3);
+            }
+            #else
+            // MATLAB/Octave: Data is planar (RRRR...GGGG...BBBB), need to interleave
             texturePointer_b=(GLubyte*) texturePointer;
             rpb=(GLubyte*) ((size_t) byteMatrix);
             gpb=(GLubyte*) ((size_t) rpb + (size_t) iters);
@@ -626,6 +640,7 @@ PsychError SCREENMakeTexture(void)
                 *(texturePointer_b++)= *(gpb++);
                 *(texturePointer_b++)= *(bpb++);
             }
+            #endif
             textureRecord->depth=24;
         }
 
@@ -660,6 +675,19 @@ PsychError SCREENMakeTexture(void)
 
         // Improved version: Takes 33 ms on a 800x800 texture...
         if (isImageMatrixBytes && numMatrixPlanes==4){
+            #if PSYCH_LANGUAGE == PSYCH_PYTHON
+            // Python fast path: NumPy arrays are C-contiguous, data is already interleaved (RGBARGBA...)
+            if (assume_texorientation == 3) {
+                // Zero-copy path: texture_orientation=3 means data is already in correct format
+                texturePointer = (GLuint*) byteMatrix;
+                textureRecord->textureMemory = texturePointer;
+                textureRecord->textureMemorySizeBytes = 0;
+            } else {
+                // Fast memcpy for interleaved data
+                memcpy((void*) texturePointer, (void*) byteMatrix, iters * 4);
+            }
+            #else
+            // MATLAB/Octave: Data is planar, need to interleave
             texturePointer_b=(GLubyte*) texturePointer;
             rpb=(GLubyte*) ((size_t) byteMatrix);
             gpb=(GLubyte*) ((size_t) rpb + (size_t) iters);
@@ -683,6 +711,7 @@ PsychError SCREENMakeTexture(void)
                     *(texturePointer_b++)= *(apb++);
                 }
             }
+            #endif
 
             textureRecord->depth=32;
         }

@@ -35,31 +35,6 @@ import yaml
 from . import Screen
 
 
-def _is_instantiated(val):
-    if val is None:
-        return False
-    elif hasattr(val, "__len__"):
-        return len(val) > 0
-
-    return True
-
-
-def _coerce_to_float(val, check_length=None):
-    if _is_instantiated(val):
-        if check_length is not None:
-            if not hasattr(val, "__len__") or len(val) != check_length:
-                raise ValueError(f"Argument must be a list of length {check_length}")
-
-        if hasattr(val, "__len__"):
-            val = [_coerce_to_float(v) for v in val]
-        else:
-            val = float(val)
-    else:
-        val = []
-
-    return val
-
-
 class PTBScreen:
     """Screen interface class providing pythonic access to Screen functions"""
 
@@ -151,18 +126,6 @@ class PTBScreen:
                     float(self.display_mapping[screen_number_int]["crtc"]),
                 )
 
-        color = _coerce_to_float(color)
-        rect = _coerce_to_float(rect, check_length=4)
-        pixel_size = _coerce_to_float(pixel_size)
-        num_buffers = _coerce_to_float(num_buffers)
-        stereo_mode = _coerce_to_float(stereo_mode)
-        multisample = _coerce_to_float(multisample)
-        imaging_mode = _coerce_to_float(imaging_mode)
-        special_flags = _coerce_to_float(special_flags)
-        client_rect = _coerce_to_float(client_rect, check_length=4)
-        fb_override_rect = _coerce_to_float(fb_override_rect, check_length=4)
-        vrr_params = _coerce_to_float(vrr_params)
-
         ptr, rect = Screen(
             "OpenWindow",
             screen_number,
@@ -178,9 +141,9 @@ class PTBScreen:
             fb_override_rect,
             vrr_params,
         )
-        
+
         rect = [int(v) for v in rect[0]]
-        
+
         return ptr, rect
 
     # def open_offscreen_window(
@@ -242,7 +205,7 @@ class PTBScreen:
         optimize_angle=0,
         special_flags=0,
         float_precision=[],
-        texture_orientation=0,
+        texture_orientation=3,
         texture_shader=0,
     ):
         """Create a texture from an image matrix (like MATLAB Screen('MakeTexture', ...))
@@ -253,18 +216,13 @@ class PTBScreen:
             optimize_angle: Optimize for drawing at this angle
             special_flags: Special flags for texture creation
             float_precision: Float precision for texture ([] for default)
-            texture_orientation: Texture orientation
+            texture_orientation: Texture orientation (3 = assume C-contiguous interleaved for zero-copy)
             texture_shader: Texture shader to use
 
         Returns:
             texture_index: Texture reference for use in draw_texture
         """
-        image_matrix = np.array(image_matrix, dtype=np.float32).tolist()
-        optimize_angle = _coerce_to_float(optimize_angle)
-        special_flags = _coerce_to_float(special_flags)
-        float_precision = _coerce_to_float(float_precision)
-        texture_orientation = _coerce_to_float(texture_orientation)
-        texture_shader = _coerce_to_float(texture_shader)
+        image_matrix = np.asarray(image_matrix)
 
         return Screen(
             "MakeTexture",
@@ -306,16 +264,6 @@ class PTBScreen:
             special_flags: Special flags for drawing
             aux_parameters: Auxiliary parameters
         """
-        source_rect = _coerce_to_float(source_rect, check_length=4)
-        dest_rect = _coerce_to_float(dest_rect, check_length=4)
-        rotation_angle = _coerce_to_float(rotation_angle)
-        filter_mode = _coerce_to_float(filter_mode)
-        global_alpha = _coerce_to_float(global_alpha)
-        modulate_color = _coerce_to_float(modulate_color)
-        texture_shader = _coerce_to_float(texture_shader)
-        special_flags = _coerce_to_float(special_flags)
-        aux_parameters = _coerce_to_float(aux_parameters)
-
         return Screen(
             "DrawTexture",
             window_ptr,
@@ -360,18 +308,6 @@ class PTBScreen:
             special_flags: Special flags for drawing
             aux_parameters: Auxiliary parameters
         """
-
-        texture_indices = _coerce_to_float(texture_indices)
-        source_rects = [_coerce_to_float(rect, check_length=4) for rect in source_rects]
-        dest_rects = [_coerce_to_float(rect, check_length=4) for rect in dest_rects]
-        rotation_angles = _coerce_to_float(rotation_angles)
-        filter_modes = _coerce_to_float(filter_modes)
-        global_alphas = _coerce_to_float(global_alphas)
-        modulate_colors = [_coerce_to_float(color) for color in modulate_colors]
-        texture_shader = _coerce_to_float(texture_shader)
-        special_flags = _coerce_to_float(special_flags)
-        aux_parameters = _coerce_to_float(aux_parameters)
-
         return Screen(
             "DrawTextures",
             window_ptr,
@@ -400,11 +336,6 @@ class PTBScreen:
         Returns:
             Tuple of (VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, Beampos)
         """
-        when = _coerce_to_float(when)
-        dont_clear = _coerce_to_float(dont_clear)
-        dont_sync = _coerce_to_float(dont_sync)
-        multiflip = _coerce_to_float(multiflip)
-
         return Screen("Flip", window_ptr, when, dont_clear, dont_sync, multiflip)
 
     def flip_async_begin(
@@ -422,11 +353,6 @@ class PTBScreen:
         Returns:
             Tuple of (VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, Beampos)
         """
-        when = _coerce_to_float(when)
-        dont_clear = _coerce_to_float(dont_clear)
-        dont_sync = _coerce_to_float(dont_sync)
-        multiflip = _coerce_to_float(multiflip)
-
         return Screen(
             "AsyncFlipBegin", window_ptr, when, dont_clear, dont_sync, multiflip
         )
@@ -475,29 +401,19 @@ class PTBScreen:
         Returns:
             Time elapsed
         """
-        dont_clear = _coerce_to_float(dont_clear)
-        sync = _coerce_to_float(sync)
         return Screen("DrawingFinished", window_ptr, dont_clear, sync)
 
     # Drawing primitives - all take window_ptr as first argument like MATLAB
     def fill_rect(self, window_ptr, color=[], rect=[]):
         """Fill a rectangle with color (like MATLAB Screen('FillRect', ...))"""
-        color = _coerce_to_float(color)
-        rect = _coerce_to_float(rect, check_length=4)
         Screen("FillRect", window_ptr, color, rect)
 
     def frame_rect(self, window_ptr, color=[], rect=[], pen_width=[]):
         """Draw rectangle outline (like MATLAB Screen('FrameRect', ...))"""
-        color = _coerce_to_float(color)
-        rect = _coerce_to_float(rect, check_length=4)
-        pen_width = _coerce_to_float(pen_width)
         Screen("FrameRect", window_ptr, color, rect, pen_width)
 
     def fill_oval(self, window_ptr, color=[], rect=[], perfect_up_to_max_diameter=[]):
         """Fill an oval with color (like MATLAB Screen('FillOval', ...))"""
-        color = _coerce_to_float(color)
-        rect = _coerce_to_float(rect, check_length=4)
-        perfect_up_to_max_diameter = _coerce_to_float(perfect_up_to_max_diameter)
         Screen("FillOval", window_ptr, color, rect, perfect_up_to_max_diameter)
 
     def frame_oval(
@@ -510,11 +426,6 @@ class PTBScreen:
         pen_mode=[],
     ):
         """Draw oval outline (like MATLAB Screen('FrameOval', ...))"""
-        color = _coerce_to_float(color)
-        rect = _coerce_to_float(rect, check_length=4)
-        pen_width = _coerce_to_float(pen_width)
-        pen_height = _coerce_to_float(pen_height)
-        pen_mode = _coerce_to_float(pen_mode)
         Screen("FrameOval", window_ptr, color, rect, pen_width, pen_height, pen_mode)
 
     def draw_line(
@@ -528,13 +439,6 @@ class PTBScreen:
         pen_width=[],
     ):
         """Draw a line (like MATLAB Screen('DrawLine', ...))"""
-        color = _coerce_to_float(color)
-        from_h = _coerce_to_float(from_h)
-        from_v = _coerce_to_float(from_v)
-        to_h = _coerce_to_float(to_h)
-        to_v = _coerce_to_float(to_v)
-        pen_width = _coerce_to_float(pen_width)
-
         Screen("DrawLine", window_ptr, color, from_h, from_v, to_h, to_v, pen_width)
 
     def draw_dots(
@@ -562,14 +466,6 @@ class PTBScreen:
             Tuple of dot size limits
         """
         xy = xy.T if xy.shape[0] != 2 else xy
-        xy = xy.astype(np.float32).tolist()
-
-        # Process arguments using the helper function
-        size = _coerce_to_float(size)
-        color = _coerce_to_float(color)
-        center = _coerce_to_float(center)
-        dot_type = _coerce_to_float(dot_type)
-        lenient = _coerce_to_float(lenient)
 
         return Screen(
             "DrawDots", window_ptr, xy, size, color, center, dot_type, lenient
@@ -605,13 +501,6 @@ class PTBScreen:
             )
 
         xy = [[float(v) for v in row] for row in xy]
-
-        # Process arguments using the helper function
-        width = _coerce_to_float(width)
-        colors = _coerce_to_float(colors)
-        center = _coerce_to_float(center)
-        smooth = _coerce_to_float(smooth)
-        lenient = _coerce_to_float(lenient)
 
         return Screen(
             "DrawLines", window_ptr, xy, width, colors, center, smooth, lenient
@@ -736,10 +625,6 @@ class PTBScreen:
         Returns:
             Image as numpy array
         """
-        rect = _coerce_to_float(rect, check_length=4)
-        buffer_name = _coerce_to_float(buffer_name)
-        float_precision = _coerce_to_float(float_precision)
-        num_channels = _coerce_to_float(num_channels)
         return Screen(
             "GetImage", window_ptr, rect, buffer_name, float_precision, num_channels
         )
@@ -753,7 +638,6 @@ class PTBScreen:
             rect: Destination rectangle
         """
         image_array = np.array(image_array, dtype=np.float32).tolist()
-        rect = _coerce_to_float(rect, check_length=4)
         Screen("PutImage", window_ptr, image_array, rect)
 
     # Window information functions
@@ -767,7 +651,6 @@ class PTBScreen:
 
     def window_size(self, window_ptr, real_fb_size=0):
         """Get window size (like MATLAB Screen('WindowSize', ...))"""
-        real_fb_size = _coerce_to_float(real_fb_size, check_length=2)
         return Screen("WindowSize", window_ptr, real_fb_size)
 
     def pixel_size(self, window_ptr):
@@ -776,9 +659,6 @@ class PTBScreen:
 
     def get_flip_interval(self, window_ptr, num_samples=[], std_dev=[], timeout=[]):
         """Get monitor flip interval (like MATLAB Screen('GetFlipInterval', ...))"""
-        num_samples = _coerce_to_float(num_samples)
-        std_dev = _coerce_to_float(std_dev)
-        timeout = _coerce_to_float(timeout)
         return Screen("GetFlipInterval", window_ptr, num_samples, std_dev, timeout)
 
     # Gamma and color functions
@@ -786,7 +666,6 @@ class PTBScreen:
         self, window_ptr_or_screen_number, physical_display=[]
     ):
         """Read normalized gamma table (like MATLAB Screen('ReadNormalizedGammaTable', ...))"""
-        physical_display = _coerce_to_float(physical_display)
         return Screen(
             "ReadNormalizedGammaTable", window_ptr_or_screen_number, physical_display
         )
@@ -800,9 +679,6 @@ class PTBScreen:
         ignore_errors=[],
     ):
         """Load normalized gamma table (like MATLAB Screen('LoadNormalizedGammaTable', ...))"""
-        load_on_next_flip = _coerce_to_float(load_on_next_flip)
-        physical_display = _coerce_to_float(physical_display)
-        ignore_errors = _coerce_to_float(ignore_errors)
         return Screen(
             "LoadNormalizedGammaTable",
             window_ptr_or_screen_number,
@@ -815,7 +691,6 @@ class PTBScreen:
     # Other utility functions
     def rect(self, window_ptr_or_screen_number, real_fb_size=0):
         """Get rectangle (like MATLAB Screen('Rect', ...))"""
-        real_fb_size = _coerce_to_float(real_fb_size, check_length=2)
         return Screen("Rect", window_ptr_or_screen_number, real_fb_size)
 
 

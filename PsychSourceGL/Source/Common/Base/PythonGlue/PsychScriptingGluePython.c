@@ -919,8 +919,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 
     if (psych_recursion_debug) printf("PTB-DEBUG: Module %s entering recursive call level %i.\n", PsychGetModuleName(), recLevel);
 
-    // Default to not using C memory layout, but classic (backwards compatible) Fortran layout:
-    use_C_memory_layout[recLevel] = FALSE;
+    // For Python, default to C memory layout to match NumPy's default row-major layout
+    // This avoids expensive array conversions for C-contiguous arrays
+    use_C_memory_layout[recLevel] = TRUE;
 
     // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
     // calls an error-exit function like PsychErrorExit() or PsychErrorExitMsg() then
@@ -2231,9 +2232,11 @@ psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequ
 {
     psych_int64 mb, nb, pb;
     psych_bool rc = PsychAllocInDoubleMatArg64(position, isRequired, &mb, &nb, &pb, array);
-    *m = (int) mb;
-    *n = (int) nb;
-    *p = (int) pb;
+    if (rc) {
+        *m = (int) mb;
+        *n = (int) nb;
+        *p = (int) pb;
+    }
     return(rc);
 }
 
@@ -2465,6 +2468,7 @@ psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType 
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_uint8, isRequired, 1, -1, 1, -1, 0, -1);
     matchError = PsychMatchDescriptors();
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
+    
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (int) mxGetM(ppyPtr);
