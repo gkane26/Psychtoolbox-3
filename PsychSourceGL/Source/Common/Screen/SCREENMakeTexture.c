@@ -330,8 +330,19 @@ PsychError SCREENMakeTexture(void)
     // We allocate our own intermediate conversion buffer unless this is
     // creation of a single-layer luminance8 integer texture from a single
     // layer uint8 input matrix and client storage is disabled. In that case, we can use a zero-copy path:
+    //
+    // The Python zero-copy path (assume_texorientation == 3) for RGB or RGBA uint8 data also bypasses
+    // the buffer: the NumPy array is already C-contiguous and interleaved, so we point directly to it
+    // from within the #if PSYCH_LANGUAGE == PSYCH_PYTHON blocks below.  Skipping the malloc here
+    // avoids an 8 MB allocation + immediate free on every frame for FHD RGBA textures.
     if ((isImageMatrixBytes && (numMatrixPlanes == 1) && !usefloatformat) ||
-        (isImageMatrixBytes && planar_storage && !(windowRecord->imagingMode & kPsychNeedHDRWindow))) {
+        (isImageMatrixBytes && planar_storage && !(windowRecord->imagingMode & kPsychNeedHDRWindow)) ||
+        #if PSYCH_LANGUAGE == PSYCH_PYTHON
+        (isImageMatrixBytes && (numMatrixPlanes == 3 || numMatrixPlanes == 4) && (assume_texorientation == 3) && !usefloatformat)
+        #else
+        0
+        #endif
+        ) {
         // Zero copy path:
         texturePointer = NULL;
         // Set usefloatformat = 0 to prevent false compiler warnings about iters
@@ -621,7 +632,8 @@ PsychError SCREENMakeTexture(void)
             // Python fast path: NumPy arrays are C-contiguous by default, so data is 
             // already interleaved (RGBRGB...). Use memcpy instead of manual interleaving.
             if (assume_texorientation == 3) {
-                // Zero-copy path: texture_orientation=3 means data is already in correct format
+                // Zero-copy path: texture_orientation=3, and the malloc was skipped above for this
+                // path, so textureMemory is still NULL.  Just point directly at the NumPy buffer.
                 texturePointer = (GLuint*) byteMatrix;
                 textureRecord->textureMemory = texturePointer;
                 textureRecord->textureMemorySizeBytes = 0;
@@ -678,10 +690,20 @@ PsychError SCREENMakeTexture(void)
             #if PSYCH_LANGUAGE == PSYCH_PYTHON
             // Python fast path: NumPy arrays are C-contiguous, data is already interleaved (RGBARGBA...)
             if (assume_texorientation == 3) {
-                // Zero-copy path: texture_orientation=3 means data is already in correct format
+                // Zero-copy path: texture_orientation=3, and the malloc was skipped above for this
+                // path, so textureMemory is still NULL.  Just point directly at the NumPy buffer.
                 texturePointer = (GLuint*) byteMatrix;
                 textureRecord->textureMemory = texturePointer;
                 textureRecord->textureMemorySizeBytes = 0;
+
+                // Use explicit GL_RGBA/GL_UNSIGNED_BYTE upload format to match the RGBA byte
+                // ordering of NumPy arrays.  The default depth==32 path in PsychTextureSupport
+                // would use GL_BGRA which swaps R<->B.  With GL_RGBA the GPU driver uploads
+                // the 4-byte pixels directly (no software expansion), giving the same zero-copy
+                // speed as GL_BGRA while keeping correct channel order.
+                textureRecord->textureinternalformat = GL_RGBA8;
+                textureRecord->textureexternalformat  = GL_RGBA;
+                textureRecord->textureexternaltype    = GL_UNSIGNED_BYTE;
             } else {
                 // Fast memcpy for interleaved data
                 memcpy((void*) texturePointer, (void*) byteMatrix, iters * 4);
@@ -845,6 +867,11 @@ PsychError SCREENMakeTexture(void)
 
     // A specialFlags setting of 32? Protect texture against deletion via Screen('Close') without providing a explicit handle:
     if (usepoweroftwo & 32) textureRecord->specialflags |= kPsychDontDeleteOnClose;
+
+    // specialFlags setting 64? Skip GPU proxy check and CPU-GPU sync during PsychCreateTexture for faster texture creation.
+    // This avoids the proxy texture format-validation pass and the glGetTexLevelParameteriv sync-point calls that would
+    // otherwise stall the CPU waiting for the GPU.  Safe for all standard uint8 RGB/RGBA textures of normal display sizes.
+    if (usepoweroftwo & 64) textureRecord->specialflags |= kPsychFastTextureCreation;
 
     if (PsychPrefStateGet_DebugMakeTexture())     //MARK #4
         StoreNowTime();

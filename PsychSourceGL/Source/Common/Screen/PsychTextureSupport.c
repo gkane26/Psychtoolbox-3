@@ -151,6 +151,10 @@ void PsychCreateTexture(PsychWindowRecordType *win)
     // useful way, instead silent failure occurs.
     avoidCPUGPUSync = (PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) ? TRUE : FALSE;
 
+    // Texture-level fast-creation flag overrides the global ConserveVRAM preference:
+    // skip the proxy-check pass and glGetTexLevelParameteriv sync-points for this texture.
+    if (win->specialflags & kPsychFastTextureCreation) avoidCPUGPUSync = TRUE;
+
     // Enable the proper OpenGL rendering context for the window associated with this texture:
     PsychSetGLContext(win);
 

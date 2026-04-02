@@ -2506,10 +2506,21 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        *value = PyFloat_AsDouble(ppyPtr);
 
-        if (PyErr_Occurred())
-            PsychErrorExit(PsychError_invalidArg_type);
+        // Use direct array data access for reliable, zero-overhead extraction.
+        // PyFloat_AsDouble invokes Python's __float__ protocol which can trigger
+        // DeprecationWarnings on non-0-d arrays in NumPy >= 2.0 and is slower.
+        if (mxIsDouble(ppyPtr))
+            *value = *((double*) mxGetData(ppyPtr));
+        else if (mxIsInt64(ppyPtr))
+            *value = (double) *((psych_int64*) mxGetData(ppyPtr));
+        else if (mxIsInt32(ppyPtr))
+            *value = (double) *((int*) mxGetData(ppyPtr));
+        else {
+            *value = PyFloat_AsDouble(ppyPtr);
+            if (PyErr_Occurred())
+                PsychErrorExit(PsychError_invalidArg_type);
+        }
     }
 
     return(acceptArg);

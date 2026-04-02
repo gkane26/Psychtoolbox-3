@@ -153,6 +153,7 @@
 #define kPsychIsEGLWindow                   4096    // 'specialflags' setting 4096: This window is living on a EGL backend (X11/Wayland/GBM/Android/...)
 #define kPsychSurfacelessContexts           16384   // 'specialflags' setting 16384: This windows main context and userspace contexts must not attach to windowing system framebuffer surfaces.
 #define kPsychDontDeleteOnClose             (1 << 17) // 'specialflags' setting 2^17: Do not close this texture/offscreen window on a call to Screen('Close'), only if explicitely closed by handle.
+#define kPsychFastTextureCreation           (1 << 18) // 'specialflags' setting 2^18: Skip proxy texture check and CPU-GPU sync during MakeTexture for faster texture creation.
 #define kPsychNeedPostSwapLockedFlush       (1 << 18) // 'specialflags' setting 2^18: Window needs display lock protected pixelwrite+flush on framebuffer immediately after bufferswap.
 #define kPsychGUIWindowWMPositioned         (1 << 19) // 'specialflags' setting 2^19: GUI window is positioned onscreen by window manager, users position spec is ignored.
 #define kPsychNeedOpenMLTSWorkaround        (1 << 20) // 'specialflags' setting 2^20: KMS pageflip completion events are faulty on a FOSS driver: Use glXGetSyncValuesOML workaround.
