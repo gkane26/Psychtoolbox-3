@@ -292,7 +292,13 @@ PsychError SCREENFlip(void)
             // a Screen('AsyncFlipEnd') op, collect its results for return to usercode, then continue with
             // scheduling the new flip request:
             flipRequest->opmode = 2;
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+            PyThreadState *_gilstate_save_early = PyEval_SaveThread();
+#endif
             flipstate = PsychFlipWindowBuffersIndirect(windowRecord);
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+            PyEval_RestoreThread(_gilstate_save_early);
+#endif
 
             // Reset state to zero, ie. ready for new adventures ;-)
             if (flipstate) flipRequest->asyncstate = 0;
@@ -384,7 +390,19 @@ PsychError SCREENFlip(void)
     // will dispatch the flip to the helper thread, then return immediately. In async end
     // or async poll mode, it will either block until async op finished, or return after
     // polling with a FALSE result, telling that not yet finished:
+    //
+    // Only release the GIL if the flipper thread already exists. On the very first Flip
+    // call the thread is created inside PsychFlipWindowBuffersIndirect(); releasing the
+    // GIL during that initialization lets Python threads race with the GPU driver's
+    // large internal setup, corrupting memory on high-resolution (e.g. 4K) displays.
+    // Once the thread is alive it is safe to release the GIL for all opmodes.
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    PyThreadState *_gilstate_save = (flipRequest->flipperThread != (psych_thread) NULL) ? PyEval_SaveThread() : NULL;
+#endif
     flipstate = PsychFlipWindowBuffersIndirect(windowRecord);
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    if (_gilstate_save) PyEval_RestoreThread(_gilstate_save);
+#endif
 
     // Only have return args in synchronous mode or in return path from end/successfull poll of async flip:
     if (opmode != 1) {
@@ -523,7 +541,13 @@ PsychError SCREENWaitUntilAsyncFlipCertain(void)
         timestamp+=5.0;
 
         // Wait for bufferswap completion or bufferswap certain (or until timeout time 'timestamp' elapsed):
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+        PyThreadState *_gilstate_wait = PyEval_SaveThread();
+#endif
         swappending = PsychWaitForBufferswapPendingOrFinished(windowRecord, &timestamp, &beamposition);
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+        PyEval_RestoreThread(_gilstate_wait);
+#endif
         if (timestamp == -1) PsychErrorExitMsg(PsychError_user, "Malfunctioned: Aborted due to timeout exceeded. Seems your graphics card doesn't support 'WaitUntilAsyncFlipCertain' properly. Sorry.");
 
         // Copy out optional timestamp of bufferswap detection:

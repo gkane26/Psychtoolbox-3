@@ -289,6 +289,9 @@ PsychError SCREENMakeTexture(void)
     }
 
     //Create a texture record.  Really just a window record adapted for textures.
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    PyThreadState *_gilstate_save = PyEval_SaveThread();
+#endif
     PsychCreateWindowRecord(&textureRecord);
     textureRecord->windowType=kPsychTexture;
 
@@ -842,6 +845,9 @@ PsychError SCREENMakeTexture(void)
     }
 
     // Texture ready. Mark it valid and return handle to userspace:
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    PyEval_RestoreThread(_gilstate_save);
+#endif
     PsychSetWindowRecordValid(textureRecord);
     PsychCopyOutDoubleArg(1, FALSE, textureRecord->windowIndex);
 
